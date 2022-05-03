@@ -138,7 +138,6 @@ def get_parent_and_all_sub_accounts(parent_account):
     yield parent_account, parent_account.GetName(), 0
     yield from get_all_sub_accounts(parent_account, [parent_account.GetName()])
 
-# TODO: Add params checks and readme + push
 def main():
     """https://github.com/Gnucash/gnucash/
     https://wiki.gnucash.org/wiki/Python_Bindings"""
