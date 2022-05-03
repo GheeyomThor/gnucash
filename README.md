@@ -1,5 +1,5 @@
 # gnucash
-gnucash python scripts for reporting and gnucash file processing
+Gnucash python scripts for reporting amount, gain, yield and their averages per period of any given asset account
 
 # dscription
  Processes .gnucash file and returns a .csv file containing amount, gain, yield and their averages per period and in total for a given account and its children.
