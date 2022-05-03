@@ -562,9 +562,6 @@ def print_out_csv(sub_accounts, credits_show, debits_show, period_list, file):
     children_totals_row = list(chain.from_iterable(totals))
     csv_writer.writerow([period_list[0]["start_date"], period_list[-1]["end_date"]] + children_totals_row)
 
-    # return numpy.array(totals).T.tolist()
-    #FIXME should be the avg amount, not the final amount..
-    # return [a + b for a, b in zip(totals, [[float(p["asset_value_end"])] for p in period_list[-1]["accounts"]])]
     return [a + b for a, b in zip(totals, [[float(0 if a[0] == 0 else a[1]/a[0])] for a in zip(nb_asset_period.values(), asset_sums.values())])]
 
 if __name__ == "__main__":
