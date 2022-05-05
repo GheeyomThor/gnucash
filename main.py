@@ -4,6 +4,8 @@
 import argparse
 import datetime
 import functools
+import os
+import sys
 from fractions import Fraction
 from itertools import chain
 from datetime import date, timedelta
@@ -159,6 +161,8 @@ def main():
     parser.add_argument('--account_path', nargs='+', help='Blank separated account path hints down to the name of the account of interest', required=True)
     args = parser.parse_args()
 
+    export_path = os.path.abspath(os.path.dirname(sys.argv[0]))
+
     gnucash_file = args.gnucash_file
     start_year = args.year
     start_month = args.month
@@ -173,12 +177,12 @@ def main():
     # show_hidden = show_hidden == 'True' # Show gnucash hidden accounts?
     # account_path = argv[8:]     # Path hint of the root account to analyse, space separated, starting after the 'Assets' account path
 
-    total_rows = generate(gnucash_file, account_path, start_year, start_month, period_type, reduction_depth, currency, show_hidden)
+    total_rows = generate(export_path, gnucash_file, account_path, start_year, start_month, period_type, reduction_depth, currency, show_hidden)
 
     print(total_rows)
 
 
-def generate(gnucash_file, account_path, start_year=1996, start_month=1, period_type="yearly", reduction_depth=1, currency=None, show_hidden=False):
+def generate(export_path, gnucash_file, account_path, start_year=1996, start_month=1, period_type="yearly", reduction_depth=1, currency=None, show_hidden=False):
 
     now = datetime.datetime.now()
     global period_length
@@ -461,9 +465,9 @@ def generate(gnucash_file, account_path, start_year=1996, start_month=1, period_
 
         # printing out
         print_out_csv(all_sub_asset_accounts, True, True, period_list,
-                                  open(f"test_files/gain_yield_raw_{'::'.join(account_path)}_{start_year}_{start_month}_{period_length}_{reduction_depth}_{currency}_{show_hidden}.csv", "w"))
+                      open(f"{export_path}/exports/gain_yield_raw_{'::'.join(account_path)}_{start_year}_{start_month}_{period_length}_{reduction_depth}_{currency}_{show_hidden}.csv", "w"))
         total_row = print_out_csv(reduced_sub_accounts, False, False, reduced_period_list,
-                      open(f"test_files/gain_yield_reduced_{'::'.join(account_path)}_{start_year}_{start_month}_{period_length}_{reduction_depth}_{currency}_{show_hidden}.csv", "w"))
+                                  open(f"{export_path}/exports/gain_yield_reduced_{'::'.join(account_path)}_{start_year}_{start_month}_{period_length}_{reduction_depth}_{currency}_{show_hidden}.csv", "w"))
 
         # no save needed, we're just reading..
         gnucash_session.end()
