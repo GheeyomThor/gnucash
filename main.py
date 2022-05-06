@@ -161,7 +161,7 @@ def main():
     parser.add_argument('--account_path', nargs='+', help='Blank separated account path hints down to the name of the account of interest', required=True)
     args = parser.parse_args()
 
-    export_path = os.path.abspath(os.path.dirname(sys.argv[0]))
+    export_path = f"{os.path.abspath(os.path.dirname(sys.argv[0]))}/test_scripts"
 
     gnucash_file = args.gnucash_file
     start_year = args.year
