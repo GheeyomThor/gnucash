@@ -19,7 +19,8 @@ from gnucash import Session, GncNumeric, SessionOpenMode, GncPriceDB, GncPrice, 
 # kind of period as the value
 PERIODS = {"monthly": 1,
            "quarterly": 3,
-           "yearly": 12}
+           "yearly": 12,
+           "daily": None}
 
 NUM_MONTHS = 12
 
@@ -99,15 +100,25 @@ def period_end(start_year, start_month, period_type):  # next_period_start - 1
     # last step, the end date is day back from the start of the next period
     # so we get a period end like
     # 2010-03-31 for period starting 2010-01 instead of 2010-04-01
-    return date(int(end_year), int(end_month), 1) - ONE_DAY
+    return date(int(end_year), int(end_month), 1) #- ONE_DAY
 
 
 def generate_period_boundaries(start_year, start_month, period_type, now):
     now_year = now.year
     now_month = now.month
-    while start_year < now_year or (start_year == now_year and start_month <= now_month):
-        yield date(int(start_year), int(start_month), 1), period_end(start_year, start_month, period_type)
-        start_year, start_month = next_period_start(start_year, start_month, period_type)
+    if period_type == "daily":
+        now_day = now.day
+        start_day = now_day
+        while start_year < now_year or (start_year == now_year and (start_month < now_month or (start_month == now_month and start_day < now_day))):
+            d = date(int(start_year), int(start_month), start_day)
+            next_day = d + ONE_DAY
+            yield d, next_day
+            start_year, start_month, start_day = next_day.year, next_day.month, next_day.day
+
+    else:
+        while start_year < now_year or (start_year == now_year and start_month <= now_month):
+            yield date(int(start_year), int(start_month), 1), period_end(start_year, start_month, period_type)
+            start_year, start_month = next_period_start(start_year, start_month, period_type)
 
 def account_from_path(top_account, account_path, original_path=None):
     """ finds an account below top_account of name account_path[-1] within the path hints given in the account_path[:-1] """
@@ -184,7 +195,7 @@ def main():
 
 def generate(export_path, gnucash_file, account_path, start_year=1996, start_month=1, period_type="yearly", reduction_depth=1, currency=None, show_hidden=False):
 
-    now = datetime.datetime.now()
+    now = datetime.datetime.now() + ONE_DAY
     global period_length
     period_length = period_type
 
@@ -251,11 +262,11 @@ def generate(export_path, gnucash_file, account_path, start_year=1996, start_mon
                 trans = asset_split.parent
                 trans_date = trans.GetDate().date()
                 period_index = bisect_right(period_starts, trans_date) - 1
-                if period_index >= 0 and trans_date <= period_list[len(period_list) - 1]['end_date']:
+                if period_index >= 0 and trans_date < period_list[len(period_list) - 1]['end_date']:
 
                     # Period
                     period = period_list[period_index]
-                    assert (period["start_date"] <= trans_date <= period["end_date"])
+                    assert period["start_date"] <= trans_date < period["end_date"], f'!{period["start_date"]} <= {trans_date} < {period["end_date"]}'
                     period_account = [acc for acc in period["accounts"] if acc["child_account_name"] == asset_child_account[1]][0]
 
                     # Amount
@@ -308,9 +319,9 @@ def generate(export_path, gnucash_file, account_path, start_year=1996, start_mon
                     trans = income_split.parent
                     trans_date = trans.GetDate().date()
                     period_index = bisect_right(period_starts, trans_date) - 1
-                    if period_index >= 0 and trans_date <= period_list[len(period_list) - 1]['end_date']:
+                    if period_index >= 0 and trans_date < period_list[len(period_list) - 1]['end_date']:
                         period = period_list[period_index]
-                        assert (period["start_date"] <= trans_date <= period["end_date"])
+                        assert period["start_date"] <= trans_date < period["end_date"], f'!{period["start_date"]} <= {trans_date} < {period["end_date"]}'
                         split_amount = currency_conversion_factor(income_child_account, trans_date, asset_target_currency) * gnc_numeric_to_python_decimal(income_split.GetAmount())
 
                         period_account = [acc for acc in period["accounts"] if acc["child_account_name"] == asset_child_account[1]][0]
@@ -326,9 +337,9 @@ def generate(export_path, gnucash_file, account_path, start_year=1996, start_mon
                     trans = expenses_split.parent
                     trans_date = trans.GetDate().date()
                     period_index = bisect_right(period_starts, trans_date) - 1
-                    if period_index >= 0 and trans_date <= period_list[len(period_list) - 1]['end_date']:
+                    if period_index >= 0 and trans_date < period_list[len(period_list) - 1]['end_date']:
                         period = period_list[period_index]
-                        assert (period["start_date"] <= trans_date <= period["end_date"])
+                        assert (period["start_date"] <= trans_date < period["end_date"])
                         split_amount = currency_conversion_factor(expenses_child_account, trans_date, asset_target_currency) * gnc_numeric_to_python_decimal(
                             expenses_split.GetAmount())
                         period_account = [acc for acc in period["accounts"] if acc["child_account_name"] == asset_child_account[1]][0]
@@ -369,9 +380,9 @@ def generate(export_path, gnucash_file, account_path, start_year=1996, start_mon
                         trans = income_split.parent
                         trans_date = trans.GetDate().date()
                         period_index = bisect_right(period_starts, trans_date) - 1
-                        if period_index >= 0 and trans_date <= period_list[len(period_list) - 1]['end_date']:
+                        if period_index >= 0 and trans_date < period_list[len(period_list) - 1]['end_date']:
                             period = period_list[period_index]
-                            assert (period["start_date"] <= trans_date <= period["end_date"])
+                            assert (period["start_date"] <= trans_date < period["end_date"])
                             split_amount = currency_conversion_factor(next_valid_parent[0], trans_date, asset_target_currency) * gnc_numeric_to_python_decimal(
                                 income_split.GetAmount())
 
@@ -402,9 +413,9 @@ def generate(export_path, gnucash_file, account_path, start_year=1996, start_mon
                         trans = expense_split.parent
                         trans_date = trans.GetDate().date()
                         period_index = bisect_right(period_starts, trans_date) - 1
-                        if period_index >= 0 and trans_date <= period_list[len(period_list) - 1]['end_date']:
+                        if period_index >= 0 and trans_date < period_list[len(period_list) - 1]['end_date']:
                             period = period_list[period_index]
-                            assert (period["start_date"] <= trans_date <= period["end_date"])
+                            assert (period["start_date"] <= trans_date < period["end_date"])
                             split_amount = currency_conversion_factor(next_valid_parent[0], trans_date, asset_target_currency) * gnc_numeric_to_python_decimal(
                                 expense_split.GetAmount())
 
@@ -474,10 +485,11 @@ def generate(export_path, gnucash_file, account_path, start_year=1996, start_mon
 
         return total_row
 
-    except Exception:
+    except Exception as e:
+        print(e)
         if "gnucash_session" in globals():
             gnucash_session.end()
-        raise
+        raise e
 
 
 def print_out_csv(sub_accounts, credits_show, debits_show, period_list, file):
@@ -555,12 +567,12 @@ def print_out_csv(sub_accounts, credits_show, debits_show, period_list, file):
     # Asset', f'Gain', f'Gain Rate', f'Income', f'Expenses', f'Yield', 'Total Yield'
 
     totals = list(map(lambda acc_stats: [f"{acc_stats[5]}",
-                                        f"{0 if acc_stats[0] == 0 else float(acc_stats[2] / acc_stats[0]):.2f}",  # Gain avg
-                                        f"{0 if acc_stats[1] == 0 else float(acc_stats[2] / acc_stats[1]):.3%}",  # Gain rate avg
-                                        f"{0 if acc_stats[0] == 0 else float(acc_stats[3] / acc_stats[0]):.2f}",  # Credits avg
-                                        f"{0 if acc_stats[0] == 0 else float(acc_stats[4] / acc_stats[0]):.2f}",  # Debits avg
-                                        f"{0 if acc_stats[1] == 0 else float((acc_stats[3] - acc_stats[4]) / acc_stats[1]):.3%}",  # Yield avg
-                                        f"{0 if acc_stats[1] == 0 else float((acc_stats[2] + (acc_stats[3] - acc_stats[4])) / acc_stats[1]):.3%}"],
+                                         f"{0 if acc_stats[0] == 0 else float(acc_stats[2] / acc_stats[0]):.2f}",  # Gain avg
+                                         f"{0 if acc_stats[1] == 0 else float(acc_stats[2] / acc_stats[1]):.3%}",  # Gain rate
+                                         f"{0 if acc_stats[0] == 0 else float(acc_stats[3] / acc_stats[0]):.2f}",  # Credits avg
+                                         f"{0 if acc_stats[0] == 0 else float(acc_stats[4] / acc_stats[0]):.2f}",  # Debits avg
+                                         f"{0 if acc_stats[1] == 0 else float((acc_stats[3] - acc_stats[4]) / acc_stats[1]):.3%}",  # Yield
+                                         f"{0 if acc_stats[1] == 0 else float((acc_stats[2] + (acc_stats[3] - acc_stats[4])) / acc_stats[1]):.3%}"],  # Total Yield
                  zip(nb_asset_period.values(), asset_sums.values(), gain_sums.values(), credits_sums.values(), debits_sums.values(), nb_asset_period.keys())))
 
     children_totals_row = list(chain.from_iterable(totals))
