@@ -114,7 +114,6 @@ def generate_period_boundaries(start_year, start_month, period_type, now):
             next_day = d + ONE_DAY
             yield d, next_day
             start_year, start_month, start_day = next_day.year, next_day.month, next_day.day
-
     else:
         while start_year < now_year or (start_year == now_year and start_month <= now_month):
             yield date(int(start_year), int(start_month), 1), period_end(start_year, start_month, period_type)
@@ -204,7 +203,11 @@ def generate(export_path, gnucash_file, account_path, start_year=1996, start_mon
 
     try:
         global gnucash_session
-        gnucash_session = Session(gnucash_file, SessionOpenMode.SESSION_NORMAL_OPEN)
+        gnucash_session = Session(gnucash_file, SessionOpenMode.SESSION_READ_ONLY) # SessionOpenMode.SESSION_NORMAL_OPEN)
+
+        gnucash_session.begin(gnucash_file, SessionOpenMode.SESSION_READ_ONLY)
+        gnucash_session.load()
+
         root_account = gnucash_session.book.get_root_account()
         asset_root_account = root_account.lookup_by_name("Assets")
         parent_asset_account = account_from_path(root_account, ["Assets"] + account_path)
@@ -489,6 +492,7 @@ def generate(export_path, gnucash_file, account_path, start_year=1996, start_mon
         print(e)
         if "gnucash_session" in globals():
             gnucash_session.end()
+            gnucash_session.destroy()
         raise e
 
 
